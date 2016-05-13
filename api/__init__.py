@@ -1,14 +1,17 @@
-import importlib
+def get_blueprint():
+    from flask.ext.restful import Api
+    from flask import Blueprint
 
-from common.utils import (
-        find_modules,
-        BlueprintSet
-    )
+    from common.utils import find_modules, join_url
 
-bps = BlueprintSet()
+    bp = Blueprint('api', __name__)
+    api = Api(bp)
 
-for pkgname in find_modules(__file__):
-    submod = importlib.import_module("." + pkgname, __name__)
-    if hasattr(submod, "blueprint"):
-        bps.add_blueprint(pkgname, submod.blueprint)
+    for modname in find_modules(__file__):
+        mod = __import__(modname, globals=globals(), locals=locals(), level=1)
+        if hasattr(mod, "get_entries"):
+            for entname, entry in mod.get_entries():
+                api.add_resource(entry, join_url(modname, entname))
+
+    return bp
 

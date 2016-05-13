@@ -21,6 +21,16 @@ def find_modules(init_file, fpattern = None):
 
     return entries
 
+def get_entries(init_file, glb):
+    _entries = []
+
+    for modname in find_modules(init_file):
+        mod = __import__(modname, globals=glb, level=1)
+        if hasattr(mod, "Entry"):
+            _entries.append((modname, mod.Entry))
+
+    return _entries
+
 def join_url(*args, **kwargs):
     """
     Join a args with seps. example:
@@ -43,33 +53,6 @@ def join_url(*args, **kwargs):
     concat_str += "" if concat_str[-1] == sep[2] else sep[2]
 
     return concat_str
-
-class BlueprintSet(object):
-    """
-    A set of blueprint which aims to simplify the operation of decoupling and
-    grouping blueprints. Add blueprints to a BlueprintSet instance, followed by
-    attaching the blueprint to an app with a url_prefix.
-    """
-
-    def __init__(self):
-        self.blueprints = {}
-
-    def add_blueprint(self, name, bp):
-        if name in self.blueprints:
-            raise KeyError("Blueprint name is duplicated.")
-        else:
-            if isinstance(bp, Blueprint):
-                self.blueprints[name] = bp
-            elif isinstance(bp, BlueprintSet):
-                for (sub_name, sub_bp) in bp.blueprints.items():
-                    self.blueprints[join_url(name, sub_name)] = sub_bp
-                    
-
-    def attach(self, app, url_prefix='', **options):
-        for (name, bp) in self.blueprints.items():
-            app.register_blueprint(bp,
-                    url_prefix=join_url(url_prefix, name), **options)
-
 
 ################################################################################
 # Request Argument Conversion and Validation
@@ -100,7 +83,6 @@ import uuid
 
 from werkzeug.datastructures import CallbackDict
 from flask.sessions import SessionInterface, SessionMixin
-from .models.session import Session
 
 class DatabaseSession(CallbackDict, SessionMixin):
     @staticmethod
@@ -121,10 +103,10 @@ class DatabaseSessionInterface(SessionInterface):
     serializer = pickle.dumps
     unserializer = pickle.loads
     session_class = DatabaseSession
-    session_table = Session
 
-    def __init__(self, db):
+    def __init__(self, db, table):
         self.db = db
+        self.session_table = table
 
     def open_session(self, app, request):
         sid = request.cookies.get(app.session_cookie_name)
@@ -139,20 +121,20 @@ class DatabaseSessionInterface(SessionInterface):
         return DatabaseSession(sid=sid, initial=initial)
 
     def save_session(self, app, session, response):
-        from .globals import app
+        from flask import current_app
         from datetime import datetime
 
         assert isinstance(session, self.session_class)
 
         # cookie properties
-        domain = self.get_cookie_domain(app)
-        path = self.get_cookie_path(app)
-        httponly = self.get_cookie_httponly(app)
-        secure = self.get_cookie_secure(app)
+        domain = self.get_cookie_domain(current_app)
+        path = self.get_cookie_path(current_app)
+        httponly = self.get_cookie_httponly(current_app)
+        secure = self.get_cookie_secure(current_app)
 
         sid = session.sid
         data = self.serializer(dict(session))
-        expiry = self.get_expiration_time(app, session)
+        expiry = self.get_expiration_time(current_app, session)
 
         session_record = self.session_table.query.get(sid)
         if session_record:
@@ -168,6 +150,11 @@ class DatabaseSessionInterface(SessionInterface):
 
         self.db.session.commit()
 
-        response.set_cookie(app.session_cookie_name, sid, expires=expiry,
-                domain=domain, path=path, httponly=httponly, secure=secure)
+        response.set_cookie(current_app.session_cookie_name, sid,
+                expires = expiry,
+                domain = domain,
+                path = path,
+                httponly = httponly,
+                secure = secure
+            )
 

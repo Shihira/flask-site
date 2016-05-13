@@ -2,8 +2,9 @@ import flask.ext.restful as restful
 import flask.ext.login as login
 
 from flask.ext.restful import reqparse
-from common.globals import loginmgr, db
-from common.models.user import Credential
+from flask import g
+
+from common.models import Credential
 from common.utils import (
         email_type,
         phone_type,
@@ -32,7 +33,7 @@ class Login(restful.Resource):
         if not cred_type:
             raise AtLeastOneOfArguments(['name', 'email', 'phone'])
 
-        cred = db.session.query(Credential).get((cred_type, args[cred_type]))
+        cred = g.db.session.query(Credential).get((cred_type, args[cred_type]))
 
         if not cred.account:
             raise CredentialNotFound(cred_type, args[cred_type]);

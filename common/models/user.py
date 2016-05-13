@@ -1,10 +1,12 @@
-from ..globals import db, app
+from flask import g, current_app
+
+db = g.db
 
 import uuid
 import datetime
 
 class Account(db.Model):
-    __tablename__ = app.config["TABLE_PREFIX"] + 'account'
+    __tablename__ = current_app.config["TABLE_PREFIX"] + 'account'
 
     uid = db.Column(db.String(36), primary_key=True,
             default=lambda: str(uuid.uuid4()))
@@ -30,7 +32,7 @@ class Account(db.Model):
         return str(self.uid)
 
 class Credential(db.Model):
-    __tablename__ = app.config["TABLE_PREFIX"] + 'credential'
+    __tablename__ = current_app.config["TABLE_PREFIX"] + 'credential'
     __table_args__ = (
             db.PrimaryKeyConstraint('cred_type', 'cred_value'),
         )
@@ -42,7 +44,7 @@ class Credential(db.Model):
     account = db.relationship(Account, back_populates="credentials")
 
 class UserInfo(db.Model):
-    __tablename__ = app.config["TABLE_PREFIX"] + 'user_info'
+    __tablename__ = current_app.config["TABLE_PREFIX"] + 'user_info'
 
     uid = db.Column(db.String(36), db.ForeignKey(Account.uid), primary_key=True)
     student_id = db.Column(db.Integer)

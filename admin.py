@@ -2,8 +2,6 @@
 
 import os
 import sys
-import inspect
-#import warnings
 
 sys.path.insert(0, os.path.dirname(__file__))
 
@@ -12,6 +10,9 @@ sys.path.insert(0, os.path.dirname(__file__))
 #            "please check carefully if your code is fully compatible.")
 
 # prepend project root path to module search paths
+
+import inspect
+from flask import g, current_app
 
 registered_command = {}
 
@@ -32,19 +33,16 @@ def as_command(arg=""):
 
 @as_command()
 def run(port=5000):
-    from common.globals import app
-    app.run(port=port, debug=True)
+    current_app.run(port=port, debug=True)
 
 @as_command()
 def initdb(drop=False):
-    from common.globals import db
-    import common.models.user
-    import common.models.session
+    import common.models
 
     if not drop:
-        db.create_all()
+        g.db.create_all()
     else:
-        db.drop_all()
+        g.db.drop_all()
 
 @as_command()
 def help(func=None):
@@ -88,13 +86,22 @@ def parse_arguments(arg_list):
 
     return args, kwargs
 
-def __main__():
+def run_command():
     if sys.argv[1] in registered_command:
         func = registered_command[sys.argv[1]]
         args, kwargs = parse_arguments(sys.argv[2:])
         func(*args, **kwargs)
     else:
         print("No such command. Run ./admin.py help for more information.")
+        exit(255)
+
+def __main__():
+    import common.init
+
+    app = common.init.get_app()
+    with app.app_context():
+        common.init.init_everything()
+        run_command()
 
 if __name__ == "__main__":
     __main__()

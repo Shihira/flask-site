@@ -1,3 +1,5 @@
+# DO NOT IMPORT FLASK BASED LIBRARIES IN THIS FILE
+
 from os import path
 from datetime import timedelta
 

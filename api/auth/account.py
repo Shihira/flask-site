@@ -3,13 +3,13 @@ import re
 import flask.ext.restful as restful
 from flask.ext.restful import reqparse
 
-from common.globals import db
+from flask import g
 from common.utils import (
         email_type,
         phone_type,
         md5_hashed_type,
     )
-import common.models.user as user_models
+import common.models as models
 
 class Account(restful.Resource):
     def get(self):
@@ -21,36 +21,36 @@ class Account(restful.Resource):
 
         args = parser.parse_args()
 
-        new_account = user_models.Account(
+        new_account = models.Account(
                 passwd = args['passwd'],
             )
-        db.session.add(new_account)
-        db.session.flush()
+        g.db.session.add(new_account)
+        g.db.session.flush()
 
-        new_username = user_models.Credential(
+        new_username = models.Credential(
                 cred_type = 'name',
                 cred_value = args['name'],
                 uid = new_account.uid
             )
-        db.session.add(new_username)
+        g.db.session.add(new_username)
 
         if args['email']:
-            new_email = user_models.Credential(
+            new_email = models.Credential(
                     cred_type = 'email',
                     cred_value = args['email'],
                     uid = new_account.uid
                 )
-            db.session.add(new_email)
+            g.db.session.add(new_email)
 
         if args['phone']:
-            new_phone = user_models.Credential(
+            new_phone = models.Credential(
                     cred_type = 'phone',
                     cred_value = args['phone'],
                     uid = new_account.uid
                 )
-            db.session.add(new_phone)
+            g.db.session.add(new_phone)
 
-        db.session.commit()
+        g.db.session.commit()
 
 Entry = Account
 
