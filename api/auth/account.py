@@ -2,6 +2,7 @@ import re
 
 import flask.ext.restful as restful
 from flask.ext.restful import reqparse
+from sqlalchemy.exc import IntegrityError
 
 from flask import g
 from common.utils import (
@@ -9,10 +10,11 @@ from common.utils import (
         phone_type,
         md5_hashed_type,
     )
+from common.error import *
 import common.models as models
 
 class Account(restful.Resource):
-    def get(self):
+    def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument('name', required=True)
         parser.add_argument('email', type=email_type)
@@ -50,7 +52,13 @@ class Account(restful.Resource):
                 )
             g.db.session.add(new_phone)
 
-        g.db.session.commit()
+        try:
+            g.db.session.commit()
+        except IntegrityError:
+            raise AccountAlreadyExists()
+            
+
+        return { 'uid': new_account.uid }
 
 Entry = Account
 

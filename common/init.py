@@ -70,9 +70,15 @@ def init_app():
     # we still need those global varibales during request
     import os
     import api
+    import json
     import mimetypes
+    import common.error
 
     current_app.before_request(init_global_variables)
+
+    @current_app.errorhandler(common.error.ApiError)
+    def error_handler(error):
+        return json.dumps(error.data), 400
 
     @current_app.route('/', defaults={'filename': 'index'})
     @current_app.route('/<filename>')
@@ -86,8 +92,6 @@ def init_app():
         return resp
 
     current_app.register_blueprint(api.get_blueprint(), url_prefix="/api")
-
-    print(current_app.url_map)
 
 ################################################################################
 # Intialize an app in this way:

@@ -17,7 +17,7 @@ from common.error import (
     )
 
 class Login(restful.Resource):
-    def get(self):
+    def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument('name')
         parser.add_argument('email', type=email_type)

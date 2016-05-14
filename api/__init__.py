@@ -11,7 +11,8 @@ def get_blueprint():
         mod = __import__(modname, globals=globals(), locals=locals(), level=1)
         if hasattr(mod, "get_entries"):
             for entname, entry in mod.get_entries():
-                api.add_resource(entry, join_url(modname, entname))
+                api.add_resource(entry, join_url(modname, entname),
+                        endpoint="{}.{}".format(modname, entname))
 
     return bp
 

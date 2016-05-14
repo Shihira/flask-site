@@ -4,5 +4,5 @@ from .user import (
         UserInfo
     )
 
-from .session import Session
+from .misc import Session
 

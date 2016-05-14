@@ -18,5 +18,11 @@ class ApiDebugConfig(ApiConfig):
     SQLALCHEMY_DATABASE_URI = 'mysql://test:test@localhost/assoplat'
     SQLALCHEMY_ECHO = True
 
+class ApiTestConfig(ApiDebugConfig):
+    TESTING = True
+
+    SQLALCHEMY_DATABASE_URI = 'sqlite://' # memory database
+    SQLALCHEMY_ECHO = True
+
 config = ApiDebugConfig()
 

@@ -6,7 +6,7 @@ from flask import session
 class Logout(restful.Resource):
 
     @login.login_required
-    def get(self):
+    def post(self):
         uid = login.current_user.uid \
                 if login.current_user.is_authenticated else None
 

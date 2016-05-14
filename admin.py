@@ -36,6 +36,19 @@ def run(port=5000):
     current_app.run(port=port, debug=True)
 
 @as_command()
+def test(dbecho=False):
+    import unittest
+    import common.config
+    import api.auth.tests
+
+    current_app.config.from_object(common.config.ApiTestConfig)
+    current_app.config["SQLALCHEMY_ECHO"] = dbecho
+
+    #print(current_app.url_map)
+
+    unittest.TextTestRunner().run(api.auth.tests.suite)
+
+@as_command()
 def initdb(drop=False):
     import common.models
 

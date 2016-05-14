@@ -136,6 +136,9 @@ class DatabaseSessionInterface(SessionInterface):
         data = self.serializer(dict(session))
         expiry = self.get_expiration_time(current_app, session)
 
+        # clear the session
+        self.db.session.rollback()
+
         session_record = self.session_table.query.get(sid)
         if session_record:
             session_record.data = data
@@ -157,4 +160,49 @@ class DatabaseSessionInterface(SessionInterface):
                 httponly = httponly,
                 secure = secure
             )
+
+################################################################################
+# Test Base Class
+
+import json
+import unittest
+
+def test_context(func):
+    from flask import current_app
+
+    def wrapper(self, *args, **kwargs):
+        with current_app.test_request_context():
+            with current_app.test_client() as client:
+                self.client = client
+                func(self, *args, **kwargs)
+                del self.client
+
+    return wrapper
+
+
+class ApiTest(unittest.TestCase):
+
+    def load_data(self, data):
+        if isinstance(data, bytes):
+            data = data.decode('utf8')
+        return json.loads(data)
+
+    def login_user(self, account):
+        from flask.ext.login import login_user
+        login_user(account)
+
+    def assertApiError(self, respdict, errcls):
+        self.assertIn("status", respdict)
+        self.assertIn("code", respdict["status"])
+        self.assertEqual(respdict["status"]["code"], errcls.error_code)
+
+    def setUp(self):
+        from flask import g, current_app
+        g.db.create_all()
+        self.dbsess = g.db.create_scoped_session()
+
+    def tearDown(self):
+        from flask import g
+        del self.dbsess
+        g.db.drop_all();
 
