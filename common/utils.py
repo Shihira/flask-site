@@ -70,7 +70,7 @@ def phone_type(phone_str):
         raise ValueError("Not a Proper Phone Number.")
 
 def md5_hashed_type(mhstr):
-    if re.match("^[a-zA-Z0-9]{32}$", mhstr):
+    if re.match("(^$)|(^[a-zA-Z0-9]{32}$)", mhstr):
         return mhstr
     else:
         raise ValueError("Not MD5 Hashed.")
@@ -100,8 +100,8 @@ class DatabaseSession(CallbackDict, SessionMixin):
         return str(uuid.uuid4())
 
 class DatabaseSessionInterface(SessionInterface):
-    serializer = pickle.dumps
-    unserializer = pickle.loads
+    serializer = lambda s, d: pickle.dumps(d, protocol=2)
+    unserializer = lambda s, d: pickle.loads(d)
     session_class = DatabaseSession
 
     def __init__(self, db, table):
@@ -174,13 +174,49 @@ def test_context(func):
         with current_app.test_request_context():
             with current_app.test_client() as client:
                 self.client = client
+                self.login_record = None
+
                 func(self, *args, **kwargs)
+
                 del self.client
+                del self.login_record
 
     return wrapper
 
+whole_record = {}
 
 class ApiTest(unittest.TestCase):
+
+    def jsonify(self, obj):
+        import json
+        return json.dumps(
+                obj,
+                ensure_ascii = False,
+                indent = 4
+            )
+
+    def record_requests(self, method, url, view, indata, response):
+        global _RECORD_STR
+        global whole_record
+
+        outdata = self.load_data(response.data)
+        user = "No user"
+        if hasattr(self, 'login_record') and self.login_record:
+            user = "User `%s`" % self.login_record
+
+        if url not in whole_record:
+            doc = ""
+            if view and getattr(view, 'view_class', None):
+                doc = view.view_class.__doc__ or ""
+            whole_record[url] = [ doc ]
+
+        whole_record[url] += [{
+                'method': method,
+                'url': url,
+                'user': user,
+                'indata': indata,
+                'outdata': self.jsonify(outdata),
+            }]
 
     def load_data(self, data):
         if isinstance(data, bytes):
@@ -188,8 +224,42 @@ class ApiTest(unittest.TestCase):
         return json.loads(data)
 
     def login_user(self, account):
-        from flask.ext.login import login_user
-        login_user(account)
+        self.login_record = account.uid
+
+        from flask import url_for
+        response = self.client.post(
+                path = url_for("api.auth.login"),
+                data = { 'uid': account.uid, 'passwd': account.passwd }
+            )
+        self.assertEqual(response.status_code, 200)
+
+    def open(self, method, endpoint, **kwargs):
+        from flask import url_for, current_app
+        kwargs['path'] = url_for(endpoint)
+
+        resp = getattr(self.client, method)(**kwargs)
+        view = None
+        if endpoint in current_app.view_functions:
+            view = current_app.view_functions[endpoint]
+        indata = u'No argument.'
+        if 'data' in kwargs:
+            indata = kwargs['data']
+
+        self.record_requests(
+                method = method.upper(),
+                url = kwargs['path'],
+                view = view,
+                indata = indata,
+                response = resp
+            )
+
+        return resp
+
+    def get(self, **kwargs):
+        return self.open('get', **kwargs)
+
+    def post(self, **kwargs):
+        return self.open('post', **kwargs)
 
     def assertApiError(self, respdict, errcls):
         self.assertIn("status", respdict)
@@ -204,5 +274,5 @@ class ApiTest(unittest.TestCase):
     def tearDown(self):
         from flask import g
         del self.dbsess
-        g.db.drop_all();
+        g.db.drop_all()
 

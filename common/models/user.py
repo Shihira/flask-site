@@ -14,7 +14,8 @@ class Account(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.datetime.now)
 
     credentials = db.relationship("Credential", back_populates="account")
-    user_info = db.relationship("UserInfo", back_populates="account")
+    user_info = db.relationship("UserInfo",
+            back_populates="account", uselist=False)
 
     @property
     def is_authenticated(self):
@@ -41,7 +42,8 @@ class Credential(db.Model):
     cred_value = db.Column(db.String(64))
     uid = db.Column(db.String(36), db.ForeignKey(Account.uid))
 
-    account = db.relationship(Account, back_populates="credentials")
+    account = db.relationship(Account,
+            back_populates="credentials", uselist=False)
 
 class UserInfo(db.Model):
     __tablename__ = current_app.config["TABLE_PREFIX"] + 'user_info'

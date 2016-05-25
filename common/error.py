@@ -46,3 +46,10 @@ class AccountAlreadyExists(ApiError):
     def __init__(self):
         self.message = "Account information is duplicated"
 
+class UserInfoNotFound(ApiError):
+    error_code = 5
+
+    def __init__(self, reason=""):
+        self.message = "User info can't be found"
+        if reason: self.message += ": " + reason
+

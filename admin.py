@@ -31,12 +31,32 @@ def as_command(arg=""):
 ################################################################################
 # Commands
 
+_RECORD_STR = u"""
+### {method} {url}
+
+Input Data:
+
+> {user} is logged in.
+
+```
+{indata}
+```
+
+Output Data:
+
+```
+{outdata}
+```
+"""
+
 @as_command()
 def run(port=5000):
     current_app.run(port=port, debug=True)
 
 @as_command()
-def test(dbecho=False):
+def test(dbecho=False, record=""):
+    global _RECORD_STR
+
     import unittest
     import common.config
     import api.auth.tests
@@ -44,9 +64,20 @@ def test(dbecho=False):
     current_app.config.from_object(common.config.ApiTestConfig)
     current_app.config["SQLALCHEMY_ECHO"] = dbecho
 
-    #print(current_app.url_map)
-
     unittest.TextTestRunner().run(api.auth.tests.suite)
+
+    if record:
+        from common.utils import whole_record
+        record_file = open(record, "w")
+        record_file.write("# API List\n\n[TOC]\n\n")
+        for title, contents in sorted(whole_record.items()):
+            record_file.write("## %s\n\n" % title)
+            for section in contents:
+                if isinstance(section, str):
+                    record_file.write(section + '\n')
+                elif isinstance(section, dict):
+                    record_file.write(_RECORD_STR.format(**section))
+        record_file.close()
 
 @as_command()
 def initdb(drop=False):
@@ -100,6 +131,9 @@ def parse_arguments(arg_list):
     return args, kwargs
 
 def run_command():
+    if len(sys.argv) == 1:
+        sys.argv += ['help']
+
     if sys.argv[1] in registered_command:
         func = registered_command[sys.argv[1]]
         args, kwargs = parse_arguments(sys.argv[2:])

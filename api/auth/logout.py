@@ -12,6 +12,6 @@ class Logout(restful.Resource):
 
         login.logout_user()
         return { "uid": uid }
-        
+
 Entry = Logout
 
